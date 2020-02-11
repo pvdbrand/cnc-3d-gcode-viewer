@@ -1,12 +1,16 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+from __future__ import print_function
 
 import numpy as np
 import math, sys
 import argparse
 
-if 1:
-    parser = argparse.ArgumentParser(prog='gcode.py') #, usage='%(prog)s [options] <input.gcode> <output.scad>')
+DEBUG = False
+
+if not DEBUG:
+    parser = argparse.ArgumentParser(prog='gcode-to-scad.py')
     parser.add_argument('-d', '--tooldiam', type=float, metavar='mm', help='tool diameter in millimeters', default=4.0)
     parser.add_argument('-f', '--facets', type=int, metavar='N', help='number of facets to render tool with', default=8)
     parser.add_argument('-s', '--seglen', type=float, metavar='mm', help='max length of interpolated arc segments (G2/G3) in mm', default=2)
@@ -33,11 +37,11 @@ else:
     toolDiam = 4.0 # mm
     toolFacets = 8
     
-    arcSegmentLength = 1.0 # mm
+    arcSegmentLength = 2.0 # mm
     
-    stockX = 500 # mm
-    stockY = 500 # mm
-    stockZ =  15 # mm
+    stockX = 1000 # mm
+    stockY = 1000 # mm
+    stockZ =   10 # mm
 
 ###############################################################################
 
@@ -64,7 +68,7 @@ def parseParams(params):
             value = float(param[1:])
             result[name] = value
         except:
-            print 'Could not parse parameter:', param
+            print('Could not parse parameter:', param)
     return result
         
         
@@ -83,7 +87,7 @@ with open(inputFilename, 'r') as f:
             if command == 'G90':
                 pass
             elif command == 'G91':
-                print 'Error: relative positioning (G91) is not supported'
+                print('Error: relative positioning (G91) is not supported')
                 sys.exit(1)
             elif command == 'G92':
                 p = parseParams(params)
@@ -144,15 +148,15 @@ with open(inputFilename, 'r') as f:
                 movements += [(mx, my, mz)]
                 
             else:
-                print 'Skipping unknown line:', rawLine.strip()
+                print('Skipping unknown line:', rawLine.strip())
 
 with open(outputFilename, 'w') as f:
-    print >>f, "module tool() { cylinder(h=%.3f,r1=%.3f,r2=%.3f,center=false,$fn=%d); }" % (toolLength, toolDiam / 2.0, toolDiam / 2.0, toolFacets)
-    print >>f, "module stock() { translate(v=[0,0,%.3f]) cube(size=[%.3f,%.3f,%.3f],center=false); }" % (-stockZ, stockX, stockY, stockZ)
-    print >>f, 'difference() {'
-    print >>f, '  stock();'
-    print >>f, '  union() {'
+    print('module tool() { cylinder(h=%.3f,r1=%.3f,r2=%.3f,center=false,$fn=%d); }' % (toolLength, toolDiam / 2.0, toolDiam / 2.0, toolFacets), file=f)
+    print('module stock() { translate(v=[0,0,%.3f]) cube(size=[%.3f,%.3f,%.3f],center=false); }' % (-stockZ, stockX, stockY, stockZ), file=f)
+    print('difference() {', file=f)
+    print('  stock();', file=f)
+    print('  union() {', file=f)
     for (sx, sy, sz), (ex, ey, ez) in zip(movements, movements[1:]):
-        print >>f, '    hull() { translate(v=[%.3f,%.3f,%.3f]) tool(); translate(v=[%.3f,%.3f,%.3f]) tool();  }' % (sx, sy, sz, ex, ey, ez)
-    print >>f, '  }'
-    print >>f, '}'
+        print('    hull() { translate(v=[%.3f,%.3f,%.3f]) tool(); translate(v=[%.3f,%.3f,%.3f]) tool();  }' % (sx, sy, sz, ex, ey, ez), file=f)
+    print('  }', file=f)
+    print('}', file=f)
