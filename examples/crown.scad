@@ -1,5 +1,5 @@
-module tool() { cylinder(h=20.000,r1=0.250,r2=0.250,center=false,$fn=8); }
-module stock() { translate(v=[0,0,-10.000]) cube(size=[1000.000,1000.000,10.000],center=false); }
+module tool() { cylinder(h=20.000,r1=0.500,r2=0.500,center=false,$fn=8); }
+module stock() { translate(v=[-500.000,-500.000,-10.000]) cube(size=[1000.000,1000.000,10.000],center=false); }
 difference() {
   stock();
   union() {

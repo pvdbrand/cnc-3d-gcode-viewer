@@ -3,7 +3,6 @@
 
 from __future__ import print_function
 
-import numpy as np
 import math, sys
 import argparse
 
@@ -60,6 +59,9 @@ oz = 0.0
 toolLength = stockZ + 10
 movements = []
 
+def isclose(a, b, atol=1e-6):
+    return abs(a - b) <= atol
+
 def parseParams(params):
     result = {}
     for param in params:
@@ -74,9 +76,9 @@ def parseParams(params):
         
 with open(inputFilename, 'r') as f:
     for rawLine in f:
-        assert(np.isclose(mx, ox + cx))
-        assert(np.isclose(my, oy + cy))
-        assert(np.isclose(mz, oz + cz))
+        assert(isclose(mx, ox + cx))
+        assert(isclose(my, oy + cy))
+        assert(isclose(mz, oz + cz))
 
         line = rawLine.split(';', 1)[0].strip().upper()
         if len(line) > 0:
@@ -109,12 +111,12 @@ with open(inputFilename, 'r') as f:
                 if code == 2 or code == 3:
                     centerX = cx + p['I']
                     centerY = cy + p['J']
-                    startRadius = np.sqrt((cx - centerX) ** 2 + (cy - centerY) ** 2)
-                    endRadius   = np.sqrt((nx - centerX) ** 2 + (ny - centerY) ** 2)
-                    assert(np.isclose(startRadius, endRadius, atol=0.001))
+                    startRadius = math.sqrt((cx - centerX) ** 2 + (cy - centerY) ** 2)
+                    endRadius   = math.sqrt((nx - centerX) ** 2 + (ny - centerY) ** 2)
+                    assert(isclose(startRadius, endRadius, atol=0.001))
                     
                     radius = startRadius
-                    circumference = np.pi * radius * 2
+                    circumference = math.pi * radius * 2
                     numFacets = circumference / float(arcSegmentLength)
                     deltaAngle = math.pi * 2 / numFacets
                     
@@ -152,7 +154,7 @@ with open(inputFilename, 'r') as f:
 
 with open(outputFilename, 'w') as f:
     print('module tool() { cylinder(h=%.3f,r1=%.3f,r2=%.3f,center=false,$fn=%d); }' % (toolLength, toolDiam / 2.0, toolDiam / 2.0, toolFacets), file=f)
-    print('module stock() { translate(v=[0,0,%.3f]) cube(size=[%.3f,%.3f,%.3f],center=false); }' % (-stockZ, stockX, stockY, stockZ), file=f)
+    print('module stock() { translate(v=[%.3f,%.3f,%.3f]) cube(size=[%.3f,%.3f,%.3f],center=false); }' % (-stockX / 2.0, -stockY / 2.0, -stockZ, stockX, stockY, stockZ), file=f)
     print('difference() {', file=f)
     print('  stock();', file=f)
     print('  union() {', file=f)
