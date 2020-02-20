@@ -83,7 +83,8 @@ def parseParams(params):
             print('Could not parse parameter:', param)
     return result
         
-        
+feedrate = {0: 3 * 60, 1: 3 * 60}
+
 with open(inputFilename, 'r') as f:
     for rawLine in f:
         assert(isclose(mx, ox + cx))
@@ -117,6 +118,10 @@ with open(inputFilename, 'r') as f:
                 nx = p.get('X', cx)
                 ny = p.get('Y', cy)
                 nz = p.get('Z', cz)
+
+                moveType = min(1, code)
+                feedrate[moveType] = p.get('F', feedrate[moveType])
+                fr = feedrate[moveType]
                 
                 if code == 2 or code == 3:
                     centerX = cx + p['I']
@@ -148,7 +153,7 @@ with open(inputFilename, 'r') as f:
                     while (code == 2 and angle > endAngle) or (code == 3 and angle < endAngle):
                         ax = math.cos(angle) * radius
                         ay = math.sin(angle) * radius
-                        movements += [(mx + (centerX - cx) + ax, my + (centerY - cy) + ay, mz)]
+                        movements += [(mx + (centerX - cx) + ax, my + (centerY - cy) + ay, mz, fr)]
                         angle += deltaAngle
                     
                 mx += nx - cx
@@ -157,12 +162,22 @@ with open(inputFilename, 'r') as f:
                 cx = nx
                 cy = ny
                 cz = nz
-                movements += [(mx, my, mz)]
+                movements += [(mx, my, mz, fr)]
                 
             else:
                 print('Skipping unknown line:', rawLine.strip())
 
 hasModel = (modelFilename != '')
+
+seconds = 0.0
+for (sx, sy, sz, _), (ex, ey, ez, fr) in zip(movements, movements[1:]):
+    dx = ex - sx
+    dy = ey - sy
+    dz = ez - sz
+    distanceMm = math.sqrt(dx **2 + dy ** 2 + dz ** 2)
+    feedrateMmSec = fr / 60.0
+    seconds += distanceMm / feedrateMmSec
+print("Total time taken assuming infinite acceleration: %.1f seconds" % seconds)
 
 with open(outputFilename, 'w') as f:
     print('module tool() { cylinder(h=%.3f,r1=%.3f,r2=%.3f,center=false,$fn=%d); }' % (toolLength, toolDiam / 2.0, toolDiam / 2.0, toolFacets), file=f)
@@ -173,7 +188,7 @@ with open(outputFilename, 'w') as f:
         print('intersection() {', file=f)
         print('  model();', file=f)
         print('  union() {', file=f)
-        for (sx, sy, sz), (ex, ey, ez) in zip(movements, movements[1:]):
+        for (sx, sy, sz, _), (ex, ey, ez, _) in zip(movements, movements[1:]):
             print('    hull() { translate(v=[%.3f,%.3f,%.3f]) tool(); translate(v=[%.3f,%.3f,%.3f]) tool();  }' % (sx, sy, sz, ex, ey, ez), file=f)
         print('  }', file=f)
         print('}', file=f)
@@ -181,7 +196,7 @@ with open(outputFilename, 'w') as f:
         print('difference() {', file=f)
         print('  stock();', file=f)
         print('  union() {', file=f)
-        for (sx, sy, sz), (ex, ey, ez) in zip(movements, movements[1:]):
+        for (sx, sy, sz, _), (ex, ey, ez, _) in zip(movements, movements[1:]):
             print('    hull() { translate(v=[%.3f,%.3f,%.3f]) tool(); translate(v=[%.3f,%.3f,%.3f]) tool();  }' % (sx, sy, sz, ex, ey, ez), file=f)
         print('  }', file=f)
         if hasModel and showLeft:
