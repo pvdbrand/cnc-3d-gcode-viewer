@@ -16,15 +16,21 @@ if not DEBUG:
     parser.add_argument('--sx', type=float, metavar='mm', help='width of stock  (in X dimension, mm)', default=1000)
     parser.add_argument('--sy', type=float, metavar='mm', help='depth of stock  (in Y dimension, mm)', default=1000)
     parser.add_argument('--sz', type=float, metavar='mm', help='height of stock (in Z dimension, mm)', default=10)
+    parser.add_argument('--model', type=str, metavar='stl', help='original STL file to overlay', default='')
+    parser.add_argument('--left', action='store_true', help='show material that was not removed but should have been (requires --model)')
+    parser.add_argument('--removed', action='store_true', help='show material that was removed but should not have been (requires --model)')
     parser.add_argument('input', help='input .gcode file')
     parser.add_argument('output', help='output .scad file')
     args = parser.parse_args()
     
     inputFilename = args.input
     outputFilename = args.output
+    modelFilename = args.model
     toolDiam = args.tooldiam
     toolFacets = args.facets
     arcSegmentLength = args.seglen
+    showLeft = args.left
+    showRemoved = args.removed
     
     stockX = args.sx
     stockY = args.sy
@@ -32,6 +38,7 @@ if not DEBUG:
 else:
     inputFilename = 'in.gcode'
     outputFilename = 'out.scad'
+    modelFilename = ''
     
     toolDiam = 4.0 # mm
     toolFacets = 8
@@ -41,6 +48,9 @@ else:
     stockX = 1000 # mm
     stockY = 1000 # mm
     stockZ =   10 # mm
+
+    showLeft = True
+    showRemoved = False
 
 ###############################################################################
 
@@ -152,13 +162,29 @@ with open(inputFilename, 'r') as f:
             else:
                 print('Skipping unknown line:', rawLine.strip())
 
+hasModel = (modelFilename != '')
+
 with open(outputFilename, 'w') as f:
     print('module tool() { cylinder(h=%.3f,r1=%.3f,r2=%.3f,center=false,$fn=%d); }' % (toolLength, toolDiam / 2.0, toolDiam / 2.0, toolFacets), file=f)
     print('module stock() { translate(v=[%.3f,%.3f,%.3f]) cube(size=[%.3f,%.3f,%.3f],center=false); }' % (-stockX / 2.0, -stockY / 2.0, -stockZ, stockX, stockY, stockZ), file=f)
-    print('difference() {', file=f)
-    print('  stock();', file=f)
-    print('  union() {', file=f)
-    for (sx, sy, sz), (ex, ey, ez) in zip(movements, movements[1:]):
-        print('    hull() { translate(v=[%.3f,%.3f,%.3f]) tool(); translate(v=[%.3f,%.3f,%.3f]) tool();  }' % (sx, sy, sz, ex, ey, ez), file=f)
-    print('  }', file=f)
-    print('}', file=f)
+    if hasModel:
+        print('module model() { color([0,1,0,0.3]) import("%s", convexity=10); }' % (modelFilename), file=f)
+    if hasModel and showRemoved:
+        print('intersection() {', file=f)
+        print('  model();', file=f)
+        print('  union() {', file=f)
+        for (sx, sy, sz), (ex, ey, ez) in zip(movements, movements[1:]):
+            print('    hull() { translate(v=[%.3f,%.3f,%.3f]) tool(); translate(v=[%.3f,%.3f,%.3f]) tool();  }' % (sx, sy, sz, ex, ey, ez), file=f)
+        print('  }', file=f)
+        print('}', file=f)
+    else:
+        print('difference() {', file=f)
+        print('  stock();', file=f)
+        print('  union() {', file=f)
+        for (sx, sy, sz), (ex, ey, ez) in zip(movements, movements[1:]):
+            print('    hull() { translate(v=[%.3f,%.3f,%.3f]) tool(); translate(v=[%.3f,%.3f,%.3f]) tool();  }' % (sx, sy, sz, ex, ey, ez), file=f)
+        print('  }', file=f)
+        if hasModel and showLeft:
+            print('  model();', file=f)
+        print('}', file=f)
+
