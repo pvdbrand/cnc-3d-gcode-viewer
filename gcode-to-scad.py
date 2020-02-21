@@ -16,6 +16,7 @@ if not DEBUG:
     parser.add_argument('--sx', type=float, metavar='mm', help='width of stock  (in X dimension, mm)', default=1000)
     parser.add_argument('--sy', type=float, metavar='mm', help='depth of stock  (in Y dimension, mm)', default=1000)
     parser.add_argument('--sz', type=float, metavar='mm', help='height of stock (in Z dimension, mm)', default=10)
+    parser.add_argument('--z0bottom', action='store_true', help='set Z=0 to bottom of the stock instead of top of stock')
     parser.add_argument('--model', type=str, metavar='stl', help='original STL file to overlay', default='')
     parser.add_argument('--left', action='store_true', help='show material that was not removed but should have been (requires --model)')
     parser.add_argument('--removed', action='store_true', help='show material that was removed but should not have been (requires --model)')
@@ -35,6 +36,7 @@ if not DEBUG:
     stockX = args.sx
     stockY = args.sy
     stockZ = args.sz
+    z0bottom = args.z0bottom
 else:
     inputFilename = 'in.gcode'
     outputFilename = 'out.scad'
@@ -48,6 +50,7 @@ else:
     stockX = 1000 # mm
     stockY = 1000 # mm
     stockZ =   10 # mm
+    z0bottom = False
 
     showLeft = True
     showRemoved = False
@@ -181,7 +184,7 @@ print("Total time taken assuming infinite acceleration: %.1f seconds" % seconds)
 
 with open(outputFilename, 'w') as f:
     print('module tool() { cylinder(h=%.3f,r1=%.3f,r2=%.3f,center=false,$fn=%d); }' % (toolLength, toolDiam / 2.0, toolDiam / 2.0, toolFacets), file=f)
-    print('module stock() { translate(v=[%.3f,%.3f,%.3f]) cube(size=[%.3f,%.3f,%.3f],center=false); }' % (-stockX / 2.0, -stockY / 2.0, -stockZ, stockX, stockY, stockZ), file=f)
+    print('module stock() { translate(v=[%.3f,%.3f,%.3f]) cube(size=[%.3f,%.3f,%.3f],center=false); }' % (-stockX / 2.0, -stockY / 2.0, 0 if z0bottom else -stockZ, stockX, stockY, stockZ), file=f)
     if hasModel:
         print('module model() { color([0,1,0,0.3]) import("%s", convexity=10); }' % (modelFilename), file=f)
     if hasModel and showRemoved:
