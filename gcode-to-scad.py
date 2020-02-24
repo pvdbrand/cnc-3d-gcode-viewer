@@ -170,6 +170,8 @@ with open(inputFilename, 'r') as f:
 hasModel = (modelFilename != '')
 
 seconds = 0.0
+minX, minY, minZ, _ = movements[0]
+maxX, maxY, maxZ = minX, minY, minZ
 for (sx, sy, sz, _), (ex, ey, ez, fr) in zip(movements, movements[1:]):
     dx = ex - sx
     dy = ey - sy
@@ -177,7 +179,16 @@ for (sx, sy, sz, _), (ex, ey, ez, fr) in zip(movements, movements[1:]):
     distanceMm = math.sqrt(dx **2 + dy ** 2 + dz ** 2)
     feedrateMmSec = fr / 60.0
     seconds += distanceMm / feedrateMmSec
+
+    minX = min(minX, min(sx, ex))
+    minY = min(minY, min(sy, ey))
+    minZ = min(minZ, min(sz, ez))
+    maxX = max(maxX, max(sx, ex))
+    maxY = max(maxY, max(sy, ey))
+    maxZ = max(maxZ, max(sz, ez))
+
 print("Total time taken assuming infinite acceleration: %.1f seconds" % seconds)
+print("X = [%.2f..%.2f], Y = [%.2f..%.2f], Z = [%.2f..%.2f]" % (minX, maxX, minY, maxY, minZ, maxZ))
 
 with open(outputFilename, 'w') as f:
     print('module tool() { cylinder(h=%.3f,r1=%.3f,r2=%.3f,center=false,$fn=%d); }' % (toolLength, toolDiam / 2.0, toolDiam / 2.0, toolFacets), file=f)
